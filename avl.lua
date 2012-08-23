@@ -15,11 +15,9 @@ BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR P
 NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+AVL tree based on: http://www.geeksforgeeks.org/archives/17679
 ]]--
-
--- AVL tree based on: http://www.geeksforgeeks.org/archives/17679
--- ==== AVL tree functions ====
-
 local b = {}
 b.__index = b
 
@@ -27,40 +25,52 @@ local newLeaf = function(a)
 	return setmetatable({
 	value	= a,
 	isLeaf	= true,
-	height	= 0, -- height of subtree starts at 0
+	height	= 0,
 	},b)
 end
 
 local getHeight = function(node)
-	if node then return node.height else return -1 end
+	return node and node.height or -1
 end
 
-local getBalance = function(node) -- return balance factor, left heavy is negative
+local setHeight = function(node)
+	node.height = math.max(getHeight(node.left),getHeight(node.right))+1
+end
+
+local getBalance = function(node)
 	return getHeight(node.right)-getHeight(node.left)
 end
 
-local rotateNode = function(root,rotation_side,opposite_side) -- rotate and return new root
+local setLeaf = function(node)
+	if node.left or node.right then
+		node.isLeaf = false
+		return
+	end
+	node.isLeaf = true
+end
+-- http://en.wikipedia.org/wiki/Tree_rotation
+local rotateNode = function(root,rotation_side,opposite_side)
 	local pivot				= root[opposite_side]
-	root[opposite_side]		= pivot[rotation_side] -- http://en.wikipedia.org/wiki/Tree_rotation
+	root[opposite_side]		= pivot[rotation_side] 
 	pivot[rotation_side]	= root
 	root,pivot				= pivot,root
-	pivot.height	= math.max(getHeight(pivot.left),getHeight(pivot.right))+1 -- update pivot height FIRST to get correct root height
-	root.height		= math.max(getHeight(root.left),getHeight(root.right))+1
+	setLeaf(root);setLeaf(pivot)
+	setHeight(pivot);setHeight(root)
 	return root
 end
-
-local balanceNode = function(root) -- balance tree and return new root node
+-- perform leaf check,height check,& rotation
+local updateSubtree = function(root) 
+	setLeaf(root)
+	setHeight(root)
 	local rotation_side,opposite_side,pivot,rotate_pivot
 	local balance = getBalance(root)
 	if balance > 1 then
 		pivot = root.right
-		local pBalance = getBalance(pivot)
-		if pBalance < 0 then rotate_pivot = true end -- do double rotation
+		if getBalance(pivot) < 0 then rotate_pivot = true end 
 		rotation_side,opposite_side = 'left','right'
 	elseif balance < -1 then
 		pivot = root.left
-		local pBalance = getBalance(pivot)
-		if pBalance > 0 then rotate_pivot = true end
+		if getBalance(pivot) > 0 then rotate_pivot = true end
 		rotation_side,opposite_side = 'right','left'
 	end
 	if rotation_side then
@@ -72,150 +82,142 @@ local balanceNode = function(root) -- balance tree and return new root node
 	return root
 end
 
-local traverse
-traverse = function(node,a,b) -- a and b determines order
-	if node then
-		if node.isLeaf then
-			coroutine.yield(node.value)
-		else
-			traverse(node[a],a,b)
-			coroutine.yield(node.value)
-			traverse(node[b],a,b)
-		end
-	end
-end
-
--- Insert given element
-function b:insert(a)
-	if not self then
-		return newLeaf(a)
+local add -- Insert given element, return it if successful
+add = function(self,a)
+	if not self or not self.value then
+		return a,newLeaf(a)
 	else
 		if a < self.value then
-			self.left	= b.insert(self.left,a)
-		else
-			self.right	= b.insert(self.right,a)
-		end
-		self.isLeaf	= nil
-		self.height	= math.max(getHeight(self.left),getHeight(self.right)) + 1 -- update height from insertion
-		self		= balanceNode(self)
+			a,self.left		= add(self.left,a)
+		elseif a > self.value then
+			a,self.right	= add(self.right,a)
+		else a = nil end
+		return a,updateSubtree(self)
 	end
-	return self
 end
 
-b.iterate = function(self,mode)
+local traverse
+traverse = function(node,a,b)
+	if node then
+		traverse(node[a],a,b)
+		coroutine.yield(node.value)
+		traverse(node[b],a,b)
+	end
+end
+
+local iterate = function(self,mode)
 	local a,b
-	if not mode then a,b = 'left','right'
-	else a,b = 'right','left' end
+	if not mode then 
+		a,b = 'left','right'
+	else 
+		a,b = 'right','left' 
+	end
 	return coroutine.wrap(function()
 		traverse(self,a,b)
 	end)
 end
-
 -- Find given element and return it
-function b:find(a) 
+local get 
+get = function(self,a) 
 	if self then
-		local v = self.value
-		if a == v then
+		if a == self.value then
 			return a
-		elseif not self.isLeaf then
-			if a < v then
-				return b.find(self.left,a)
-			else
-				return b.find(self.right,a)
-			end
-		end
-	end
-end
-
-function b:delete(a)
-	if self then
-		local v = self.value
-		if a == v then			
-			if not self.left or not self.right then -- no successor
-				return self.left or self.right
-			else -- look for successor value
-				local sNode = self.right
-				while sNode.left do
-					sNode = sNode.left
-				end
-				local _,v = b.delete(self,sNode.value) -- delete node with successor value
-				self.value = v -- replace deleted node value with successor value
-			end
-		elseif not self.isLeaf then
-			if a < v then
-				self.left = b.delete(self.left,a)
-			else
-				self.right = b.delete(self.right,a)
-			end
-		end
-		self.height	= math.max(getHeight(self.left),getHeight(self.right)) + 1
-		return balanceNode(self),a
-	end
-end
-
--- ==== proxy functions ====
-
-local proxyIterator = function(state)
-	local root		= state.proxy.__index
-	local iter		= b.iterate(root,state.mode) 
-	local values	= state.proxy.values
-	local key		= iter(root)
-	while key do
-		local key_table = values[key]
-		for i = 1,#key_table do
-			coroutine.yield(key,key_table[i])
-		end
-		key = iter()
-	end
-end
-
-local proxy = {}
-
-proxy.insert	= function(self,key,value) -- insert key value pair, value = key when no value
-	value = value or key
-	if not self.values[key] then 
-		self.values[key] = {value}
-		self.__index = b.insert(self.__index,key)
-	else
-		table.insert(self.values[key],value)
-	end 
-end
-proxy.find		= function(self,key,value) -- return key value pair if exist, if no value, return list of values for that key
-	local key_table = self.values[key]
-	if key_table then
-		if value then
-			for i = 1,#key_table do
-				if key_table[i] == value then
-					return key,value
-				end
-			end
+		elseif a < self.value then
+			return get(self.left,a)
 		else
-			local list = {}
-			for i = 1,#key_table do
-				list[#list+1] = key_table[i]
-			end
-			return list
+			return get(self.right,a)
 		end
-	end
-end
-proxy.iterate	= function(self,mode) -- iterate over all key value pairs
-	local state = {mode = mode,proxy = self}
-	return coroutine.wrap(proxyIterator),state
-end
-proxy.delete	= function(self,key,value)
-	if not value then -- delete key entirely
-		self.values[key]	= nil
-		self.__index	= b.delete(self.__index,key) 
-	else -- delete key value pair
-		local key_table = self.values[key]
-		for i = #key_table,1,-1 do
-			if key_table[i] == value then table.remove(key_table,i) end
-		end
-		if not next(key_table) then proxy.delete(self,key) end
 	end
 end
 
-return {new = function() -- new list object
-	local p	= {values = {}} -- proxy that wraps our binary tree
-	return setmetatable(p,{__index = proxy})
-end}
+local delete
+delete = function(self,a)
+	if self then 
+		local v = self.value
+		if a == v then 
+			if not self.left or not self.right then
+				return self.left or self.right
+			else 
+				local sNode	= self.right
+				while sNode.left do
+					sNode	= sNode.left
+				end
+				self		= delete(self,sNode.value)
+				self.value	= sNode.value
+				return self
+			end
+		elseif not self.isLeaf then
+			if a < v then
+				self.left	= delete(self.left,a)
+			else
+				self.right	= delete(self.right,a)
+			end
+		end
+		return updateSubtree(self)
+	end
+end
+
+local pop
+pop = function(self,side)
+	local v
+	if not self[side] then
+		return self.value,self.left or self.right
+	else
+		v,self[side] = pop(self[side],side)	
+	end
+	return v,updateSubtree(self)
+end
+
+local peek
+peek = function(self,side)
+	if not self[side] then
+		return self.value
+	else
+		return peek(self[side],side)
+	end
+end
+-- http://stackoverflow.com/questions/1733311/pretty-print-a-tree
+local printTree
+printTree = function(self,depth)
+	depth = depth or 1
+	if self then 
+		printTree(self.right,depth+1)
+		print(string.format("%s%d",string.rep("  ",depth), self.value))
+		printTree(self.left,depth+1)
+	end	
+end
+
+b.add		= add
+b.delete	= delete
+b.pop 		= pop
+b.peek		= peek
+b.get		= get
+b.iterate	= iterate
+b.printTree	= printTree
+
+return function()
+	return setmetatable({ -- proxy table for tree
+		root = newLeaf(),
+		add = function(self,a)
+			a,self.root = self.root:add(a)
+			return a
+		end,
+		delete = function(self,a)
+			self.root = self.root:delete(a) or newLeaf()
+		end,
+		pop = function(self,side)
+			assert(side,'No side specified!')
+			a,self.root = self.root:pop(side)
+			return a
+		end,
+	},
+	{__index = function(t,k)
+		local root = t.root
+		if type(root[k]) == 'function' then 
+			return function(...)
+				return root[k](root,select(2,...))
+			end
+		end
+		return root[k]
+	end})
+end
