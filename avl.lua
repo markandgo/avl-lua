@@ -104,7 +104,7 @@ traverse = function(node,a,b)
 		traverse(node[b],a,b)
 	end
 end
-
+-- tree traversal is in order by default (left,root,right)
 local iterate = function(self,mode)
 	local a,b
 	if not mode then 
