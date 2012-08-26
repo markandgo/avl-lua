@@ -18,14 +18,14 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN 
 
 AVL tree based on: http://www.geeksforgeeks.org/archives/17679
 ]]--
-local b = {}
+local b   = {}
 b.__index = b
 
 local newLeaf = function(a)
 	return setmetatable({
-	value	= a,
-	isLeaf	= true,
-	height	= 0,
+	value   = a,
+	isLeaf  = true,
+	height  = 0,
 	},b)
 end
 
@@ -50,11 +50,11 @@ local setLeaf = function(node)
 end
 -- http://en.wikipedia.org/wiki/Tree_rotation
 local rotateNode = function(root,rotation_side,opposite_side)
-	local pivot				= root[opposite_side]
-	root[opposite_side]		= pivot[rotation_side] 
-	pivot[rotation_side]	= root
-	root,pivot				= pivot,root
-	setLeaf(root);setLeaf(pivot)
+	local pivot           = root[opposite_side]
+	root[opposite_side]   = pivot[rotation_side] 
+	pivot[rotation_side]  = root
+	root,pivot            = pivot,root
+	setLeaf(root)   ;setLeaf(pivot)
 	setHeight(pivot);setHeight(root)
 	return root
 end
@@ -88,9 +88,9 @@ add = function(self,a)
 		return a,newLeaf(a)
 	else
 		if a < self.value then
-			a,self.left		= add(self.left,a)
+			a,self.left   = add(self.left,a)
 		elseif a > self.value then
-			a,self.right	= add(self.right,a)
+			a,self.right  = add(self.right,a)
 		else a = nil end
 		return a,updateSubtree(self)
 	end
@@ -138,19 +138,19 @@ delete = function(self,a)
 			if not self.left or not self.right then
 				return self.left or self.right
 			else 
-				local sNode	= self.right
+				local sNode = self.right
 				while sNode.left do
-					sNode	= sNode.left
+					sNode	    = sNode.left
 				end
-				self		= delete(self,sNode.value)
-				self.value	= sNode.value
+				self        = delete(self,sNode.value)
+				self.value  = sNode.value
 				return self
 			end
 		elseif not self.isLeaf then
 			if a < v then
-				self.left	= delete(self.left,a)
+				self.left   = delete(self.left,a)
 			else
-				self.right	= delete(self.right,a)
+				self.right  = delete(self.right,a)
 			end
 		end
 		return updateSubtree(self)
@@ -163,7 +163,7 @@ pop = function(self,side)
 	if not self[side] then
 		return self.value,self.left or self.right
 	else
-		v,self[side] = pop(self[side],side)	
+		v,self[side] = pop(self[side],side)
 	end
 	return v,updateSubtree(self)
 end
@@ -187,18 +187,18 @@ printTree = function(self,depth)
 	end	
 end
 
-b.add		= add
-b.delete	= delete
-b.pop 		= pop
-b.peek		= peek
-b.get		= get
-b.iterate	= iterate
-b.printTree	= printTree
+b.add       = add
+b.delete    = delete
+b.pop       = pop
+b.peek      = peek
+b.get       = get
+b.iterate   = iterate
+b.printTree = printTree
 
 return function()
 	return setmetatable({ -- proxy table for tree
-		root = newLeaf(),
-		add = function(self,a)
+		root  = newLeaf(),
+		add   = function(self,a)
 			a,self.root = self.root:add(a)
 			return a
 		end,

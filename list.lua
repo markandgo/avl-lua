@@ -19,14 +19,14 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN 
 The list is a wrapper for avl.lua to allow duplicate values
 ]]--
 
-local path	= (...):match('^.*[%.%/]') or ''
-local avl	= require (path .. 'avl')
+local path  = (...):match('^.*[%.%/]') or ''
+local avl   = require (path .. 'avl')
 
 local proxyIterator = function(state)
-	local root		= state.list.root
-	local iter		= root:iterate(state.mode) 
-	local vc		= state.list.value_counter
-	local value		= iter(root)
+	local root    = state.list.root
+	local iter    = root:iterate(state.mode) 
+	local vc      = state.list.value_counter
+	local value   = iter(root)
 	while value do
 		for i = 1,vc[value] do
 			coroutine.yield(value)
@@ -35,8 +35,8 @@ local proxyIterator = function(state)
 	end
 end
 
-local list = {}
-list.__index = list
+local list    = {}
+list.__index  = list
 -- insert value
 local add = function(self,value,amt) 
 	if self.root:add(value) then 
@@ -53,13 +53,13 @@ local get = function(self,value)
 	end
 end
 -- iterate over all key value pairs
-local iterate	= function(self,mode) 
+local iterate = function(self,mode) 
 	local state = {mode = mode,list = self}
 	return coroutine.wrap(proxyIterator),state
 end
 
 local delete = function(self,value,amt)
-	local vc = self.value_counter
+	local vc  = self.value_counter
 	vc[value] = vc[value] - (amt or math.huge)
 	if vc[value] < 1 then
 		self.root:delete(value)
@@ -72,10 +72,10 @@ pop = function(self,side,dup)
 	if dup == 'dup' then
 		self.value_counter[self.root:pop(side)] = nil
 	else
-		local value	= self.root:peek(side)
-		local vc	= self.value_counter
-		local c		= vc[value] - 1
-		vc[value]	= c
+		local value = self.root:peek(side)
+		local vc    = self.value_counter
+		local c     = vc[value] - 1
+		vc[value]   = c
 		if c < 1 then
 			pop(self,side,'dup')
 		end
@@ -84,16 +84,16 @@ pop = function(self,side,dup)
 end
 
 return function()
-	local root	= avl()
-	local vc	= setmetatable({},{__mode = 'k'})
+	local root  = avl()
+	local vc    = setmetatable({},{__mode = 'k'})
 	return setmetatable({
-	value_counter	= vc,
-	root	= root,
-	add 	= add,
-	delete	= delete,
-	get		= get,
-	iterate	= iterate,
-	pop		= pop,
+	value_counter = vc,
+	root          = root,
+	add           = add,
+	delete        = delete,
+	get           = get,
+	iterate       = iterate,
+	pop           = pop,
 	},
 	{__index = function(t,k)
 		local root = t.root
