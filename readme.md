@@ -28,7 +28,7 @@ _:pop(side)
 
 _:peek(side)
 
-_:printTree() --> print tree to console
+_:printTree()
 
 ## list.lua ##
 
@@ -42,7 +42,7 @@ _:delete(value,amount) --> no amount specified: delete all copies
 
 _:iterate(mode)
 
-_:get(value) 
+_:get(value) --> returns the value and amount
 
 _:pop(side,duplicate) --> if duplicate = 'dup' then pop all copies of a value
 
