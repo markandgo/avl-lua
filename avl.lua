@@ -24,7 +24,6 @@ b.__index = b
 local newLeaf = function(a)
 	return setmetatable({
 	value   = a,
-	isLeaf  = true,
 	height  = 0,
 	},b)
 end
@@ -41,26 +40,17 @@ local getBalance = function(node)
 	return getHeight(node.right)-getHeight(node.left)
 end
 
-local setLeaf = function(node)
-	if node.left or node.right then
-		node.isLeaf = false
-		return
-	end
-	node.isLeaf = true
-end
 -- http://en.wikipedia.org/wiki/Tree_rotation
 local rotateNode = function(root,rotation_side,opposite_side)
 	local pivot           = root[opposite_side]
 	root[opposite_side]   = pivot[rotation_side] 
 	pivot[rotation_side]  = root
 	root,pivot            = pivot,root
-	setLeaf(root)   ;setLeaf(pivot)
 	setHeight(pivot);setHeight(root)
 	return root
 end
 -- perform leaf check,height check,& rotation
 local updateSubtree = function(root) 
-	setLeaf(root)
 	setHeight(root)
 	local rotation_side,opposite_side,pivot,rotate_pivot
 	local balance = getBalance(root)
@@ -146,7 +136,7 @@ delete = function(self,a)
 				self.value  = sNode.value
 				return self
 			end
-		elseif not self.isLeaf then
+		else
 			if a < v then
 				self.left   = delete(self.left,a)
 			else
