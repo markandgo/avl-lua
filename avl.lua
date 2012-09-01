@@ -72,15 +72,17 @@ local updateSubtree = function(root)
 	return root
 end
 
+local getVal = function(v) return v end
+
 local add -- Insert given element, return it if successful
-add = function(self,a)
+add = function(self,a,fVal)
 	if not self or not self.value then
 		return a,newLeaf(a)
 	else
-		if a < self.value then
-			a,self.left   = add(self.left,a)
-		elseif a > self.value then
-			a,self.right  = add(self.right,a)
+		if fVal(a) < fVal(self.value) then
+			a,self.left   = add(self.left,a,fVal)
+		elseif fVal(a) > fVal(self.value) then
+			a,self.right  = add(self.right,a,fVal)
 		else a = nil end
 		return a,updateSubtree(self)
 	end
@@ -185,21 +187,22 @@ b.get       = get
 b.iterate   = iterate
 b.printTree = printTree
 
-return function()
+return function(fVal)
 	return setmetatable({ -- proxy table for tree
-		root  = newLeaf(),
-		add   = function(self,a)
-			a,self.root = self.root:add(a)
+		root   = newLeaf(),
+		add    = function(self,a)
+			a,self.root = self.root:add(a,self.getVal)
 			return a
 		end,
 		delete = function(self,a)
 			self.root = self.root:delete(a) or newLeaf()
 		end,
-		pop = function(self,side)
+		pop    = function(self,side)
 			assert(side,'No side specified!')
 			a,self.root = self.root:pop(side)
 			return a
 		end,
+		getVal = fVal or getVal,
 	},
 	{__index = function(t,k)
 		local root = t.root

@@ -22,7 +22,7 @@ The list is a wrapper for avl.lua to allow duplicate values
 local path  = (...):match('^.*[%.%/]') or ''
 local avl   = require (path .. 'avl')
 
-local proxyIterator = function(state)
+local iterator = function(state)
 	local root    = state.list.root
 	local iter    = root:iterate(state.mode) 
 	local vc      = state.list.value_counter
@@ -55,7 +55,7 @@ end
 -- iterate over all key value pairs
 local iterate = function(self,mode) 
 	local state = {mode = mode,list = self}
-	return coroutine.wrap(proxyIterator),state
+	return coroutine.wrap(iterator),state
 end
 
 local delete = function(self,value,amt)
@@ -83,8 +83,8 @@ pop = function(self,side,dup)
 	return value
 end
 
-return function()
-	local root  = avl()
+return function(fVal)
+	local root  = avl(fVal)
 	local vc    = setmetatable({},{__mode = 'k'})
 	return setmetatable({
 	value_counter = vc,
