@@ -70,7 +70,10 @@ end
 local pop
 pop = function(self,side,dup)
 	if dup == 'dup' then
-		self.value_counter[self.root:pop(side)] = nil
+		local value = self.root:pop(side)
+		local amt   = self.value_counter[value]
+		self.value_counter[value] = nil
+		return value,amt
 	else
 		local value = self.root:peek(side)
 		local vc    = self.value_counter
@@ -79,8 +82,8 @@ pop = function(self,side,dup)
 		if c < 1 then
 			pop(self,side,'dup')
 		end
+		return value,1
 	end
-	return value
 end
 
 return function(fVal)

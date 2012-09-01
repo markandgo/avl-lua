@@ -2,6 +2,7 @@ newlist = require'list'
 list	= newlist()
 
 function printList(mode)
+	print('=======')
 	for k in list:iterate(mode) do print(k) end
 	print('=======')
 end
@@ -18,8 +19,8 @@ list:delete(4)
 
 printList('reverse')
 
-list:pop('left','dup')
-list:pop('right')
+print(list:pop('left','dup'))
+print(list:pop('right'))
 
 printList()
 

@@ -27,19 +27,26 @@ Values in the tree are added and sorted using > and < operations at each node. T
 
 Functions:
 
+````lua
 _:add(value)
 
 _:delete(value)
 
-_:iterate(mode) --> if mode is specified then reverse order of traversal
+_:iterate(mode) 
+-- if mode is specified then reverse order of traversal
 
 _:get(value) 
+-- return value if found
 
 _:pop(side)
+-- pop and return value on left or right side
 
 _:peek(side)
+-- return value on left or right side
 
 _:printTree()
+````
+
 
 ## list.lua ##
 
@@ -47,18 +54,24 @@ list.lua augments the AVL tree by storing a counter for each value in a hash tab
 
 Functions:
 
+````lua
 _:add(value,amount)
 
-_:delete(value,amount) --> no amount specified: delete all copies
+_:delete(value,amount) 
+-- no amount specified: delete all copies
 
 _:iterate(mode)
 
-_:get(value) --> returns the value and amount
+_:get(value) 
+-- return the value and amount
 
-_:pop(side,duplicate) --> if duplicate = 'dup' then pop all copies of a value
+_:pop(side,duplicate) 
+-- pop and return a value and amount popped
+-- if duplicate = 'dup' then pop all copies of a value
 
 _:peek(side)
 
 _:printTree()
+````
 
 See test.lua and output.txt for examples.
