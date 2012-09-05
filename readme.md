@@ -5,25 +5,14 @@ list.lua relies on avl.lua. list.lua allows duplicate values whereas avl.lua doe
 ## Init ##
 
 ````lua
---[[
-When adding a value, it is compared with a node's value before moving left or right in the tree. 
-You can change how the values are compared when initiating a list.
-Just specify an fVal (optional function) as a parameter.
-
-For example:
-We wish to insert tables into the list. We'll need a custom fVal that'll return values for the comparison operators:
-
-fVal = function(table) return table.value end
---]]
-
 avl     = require 'avl'
 newlist = require'list' (same folder as avl)
-list    = avl(fVal) -- newlist(fVal)
+list    = avl() -- newlist()
 ````
 
 ## avl.lua ##
 
-Values in the tree are added and sorted using > and < operations at each node. The operation will fail if either cases fail.
+Values in the tree are added and sorted using > and < operations at each node. The operation will fail if either cases fail. You can add tables as values by defining a __lt metamethod for each one.
 
 Functions:
 

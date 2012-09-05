@@ -36,9 +36,8 @@ local iterator = function(state)
 end
 
 local list    = {}
-list.__index  = list
 -- insert value
-local add = function(self,value,amt) 
+list.add = function(self,value,amt) 
 	if self.root:add(value) then 
 		self.value_counter[value] = amt or 1
 	else
@@ -46,19 +45,19 @@ local add = function(self,value,amt)
 	end 
 end
 -- return value and amount
-local get = function(self,value) 
+list.get = function(self,value) 
 	local vc = self.value_counter
 	if vc[value] then
 		return value,vc[value]
 	end
 end
 -- iterate over all key value pairs
-local iterate = function(self,mode) 
+list.iterate = function(self,mode) 
 	local state = {mode = mode,list = self}
 	return coroutine.wrap(iterator),state
 end
 
-local delete = function(self,value,amt)
+list.delete = function(self,value,amt)
 	local vc  = self.value_counter
 	vc[value] = vc[value] - (amt or math.huge)
 	if vc[value] < 1 then
@@ -67,8 +66,7 @@ local delete = function(self,value,amt)
 	end
 end
 
-local pop
-pop = function(self,side,dup)
+list.pop = function(self,side,dup)
 	if dup == 'dup' then
 		local value = self.root:pop(side)
 		local amt   = self.value_counter[value]
@@ -80,31 +78,19 @@ pop = function(self,side,dup)
 		local c     = vc[value] - 1
 		vc[value]   = c
 		if c < 1 then
-			pop(self,side,'dup')
+			list.pop(self,side,'dup')
 		end
 		return value,1
 	end
 end
 
-return function(fVal)
-	local root  = avl(fVal)
+return function()
+	local root  = avl()
 	local vc    = setmetatable({},{__mode = 'k'})
 	return setmetatable({
 	value_counter = vc,
 	root          = root,
-	add           = add,
-	delete        = delete,
-	get           = get,
-	iterate       = iterate,
-	pop           = pop,
-	},
-	{__index = function(t,k)
-		local root = t.root
-		if type(root[k]) == 'function' then 
-			return function(...)
-				return root[k](root,select(2,...))
-			end
-		end
-		return root[k]
+	},{__index = function(t,k)
+		return list[k] or t.root[k]
 	end})
 end

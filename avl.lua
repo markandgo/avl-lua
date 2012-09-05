@@ -72,19 +72,73 @@ local updateSubtree = function(root)
 	return root
 end
 
-local getVal = function(v) return v end
-
-local add -- Insert given element, return it if successful
-add = function(self,a,fVal)
+b.add = function(self,a) -- Insert given element, return it if successful
 	if not self or not self.value then
 		return a,newLeaf(a)
 	else
-		if fVal(a) < fVal(self.value) then
-			a,self.left   = add(self.left,a,fVal)
-		elseif fVal(a) > fVal(self.value) then
-			a,self.right  = add(self.right,a,fVal)
+		if a < self.value then
+			a,self.left   = b.add(self.left,a)
+		elseif a > self.value then
+			a,self.right  = b.add(self.right,a)
 		else a = nil end
 		return a,updateSubtree(self)
+	end
+end
+
+b.delete = function(self,a)
+	if self then 
+		local v = self.value
+		if a == v then 
+			if not self.left or not self.right then
+				return self.left or self.right
+			else 
+				local sNode = self.right
+				while sNode.left do
+					sNode	    = sNode.left
+				end
+				self        = b.delete(self,sNode.value)
+				self.value  = sNode.value
+				return self
+			end
+		else
+			if a < v then
+				self.left   = b.delete(self.left,a)
+			else
+				self.right  = b.delete(self.right,a)
+			end
+		end
+		return updateSubtree(self)
+	end
+end
+
+b.pop = function(self,side)
+	local v
+	if not self[side] then
+		return self.value,self.left or self.right
+	else
+		v,self[side] = b.pop(self[side],side)
+	end
+	return v,updateSubtree(self)
+end
+
+b.peek = function(self,side)
+	if not self[side] then
+		return self.value
+	else
+		return b.peek(self[side],side)
+	end
+end
+
+-- Find given element and return it
+b.get = function(self,a)
+	if self then
+		if a == self.value then
+			return a
+		elseif a < self.value then
+			return b.get(self.left,a)
+		else
+			return b.get(self.right,a)
+		end
 	end
 end
 
@@ -97,7 +151,7 @@ traverse = function(node,a,b)
 	end
 end
 -- tree traversal is in order by default (left,root,right)
-local iterate = function(self,mode)
+b.iterate = function(self,mode)
 	local a,b
 	if not mode then 
 		a,b = 'left','right'
@@ -108,90 +162,22 @@ local iterate = function(self,mode)
 		traverse(self,a,b)
 	end)
 end
--- Find given element and return it
-local get 
-get = function(self,a) 
-	if self then
-		if a == self.value then
-			return a
-		elseif a < self.value then
-			return get(self.left,a)
-		else
-			return get(self.right,a)
-		end
-	end
-end
 
-local delete
-delete = function(self,a)
-	if self then 
-		local v = self.value
-		if a == v then 
-			if not self.left or not self.right then
-				return self.left or self.right
-			else 
-				local sNode = self.right
-				while sNode.left do
-					sNode	    = sNode.left
-				end
-				self        = delete(self,sNode.value)
-				self.value  = sNode.value
-				return self
-			end
-		else
-			if a < v then
-				self.left   = delete(self.left,a)
-			else
-				self.right  = delete(self.right,a)
-			end
-		end
-		return updateSubtree(self)
-	end
-end
-
-local pop
-pop = function(self,side)
-	local v
-	if not self[side] then
-		return self.value,self.left or self.right
-	else
-		v,self[side] = pop(self[side],side)
-	end
-	return v,updateSubtree(self)
-end
-
-local peek
-peek = function(self,side)
-	if not self[side] then
-		return self.value
-	else
-		return peek(self[side],side)
-	end
-end
 -- http://stackoverflow.com/questions/1733311/pretty-print-a-tree
-local printTree
-printTree = function(self,depth)
+b.printTree = function(self,depth)
 	depth = depth or 1
 	if self then 
-		printTree(self.right,depth+1)
+		b.printTree(self.right,depth+1)
 		print(string.format("%s%d",string.rep("  ",depth), self.value))
-		printTree(self.left,depth+1)
+		b.printTree(self.left,depth+1)
 	end	
 end
 
-b.add       = add
-b.delete    = delete
-b.pop       = pop
-b.peek      = peek
-b.get       = get
-b.iterate   = iterate
-b.printTree = printTree
-
-return function(fVal)
-	return setmetatable({ -- proxy table for tree
+return function()
+	local t = { -- proxy table for tree
 		root   = newLeaf(),
 		add    = function(self,a)
-			a,self.root = self.root:add(a,self.getVal)
+			a,self.root = self.root:add(a)
 			return a
 		end,
 		delete = function(self,a)
@@ -202,15 +188,6 @@ return function(fVal)
 			a,self.root = self.root:pop(side)
 			return a
 		end,
-		getVal = fVal or getVal,
-	},
-	{__index = function(t,k)
-		local root = t.root
-		if type(root[k]) == 'function' then 
-			return function(...)
-				return root[k](root,select(2,...))
-			end
-		end
-		return root[k]
-	end})
+	}
+	return setmetatable(t,{__index = function(t,k) return t.root[k] end})
 end
