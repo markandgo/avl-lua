@@ -18,14 +18,18 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN 
 
 AVL tree based on: http://www.geeksforgeeks.org/archives/17679
 ]]--
-local b   = {}
-b.__index = b
+local insert = table.insert
+-- positive BF = right side heavy
+-- negative BF = left side heavy
+local MAX_BALANCE_FACTOR = 1
+local MIN_BALANCE_FACTOR = -1
+
+-- ================
+-- PRIVATE
+-- ================
 
 local newLeaf = function(a)
-	return setmetatable({
-	value   = a,
-	height  = 0,
-	},b)
+	return {value = a, height = 0}
 end
 
 local getHeight = function(node)
@@ -49,16 +53,20 @@ local rotateNode = function(root,rotation_side,opposite_side)
 	setHeight(pivot);setHeight(root)
 	return root
 end
+
 -- perform leaf check,height check,& rotation
 local updateSubtree = function(root) 
+	local oldHeight = root.height
 	setHeight(root)
 	local rotation_side,opposite_side,pivot,rotate_pivot
 	local balance = getBalance(root)
-	if balance > 1 then
+	-- single rotation
+	if balance > MAX_BALANCE_FACTOR then
 		pivot = root.right
+		-- double rotation
 		if getBalance(pivot) < 0 then rotate_pivot = true end 
 		rotation_side,opposite_side = 'left','right'
-	elseif balance < -1 then
+	elseif balance < MIN_BALANCE_FACTOR then
 		pivot = root.left
 		if getBalance(pivot) > 0 then rotate_pivot = true end
 		rotation_side,opposite_side = 'right','left'
@@ -69,76 +77,34 @@ local updateSubtree = function(root)
 		end
 		root = rotateNode(root,rotation_side,opposite_side)
 	end
-	return root
+	return root.height == oldHeight and false or true,root
 end
 
-b.add = function(self,a) -- Insert given element, return it if successful
-	if not self or not self.value then
-		return a,newLeaf(a)
-	else
-		if a < self.value then
-			a,self.left   = b.add(self.left,a)
-		elseif a > self.value then
-			a,self.right  = b.add(self.right,a)
-		else a = nil end
-		return a,updateSubtree(self)
+-- check for the existence of the value and the path to the value
+local getPath = function(a,node,side)
+	local stack,side = {node},{side}
+	-- get the path to the value or empty leaf
+	while node do
+		if a < node.value then
+			node = node.left
+			insert(stack,node);insert(side,'left')
+		elseif a > node.value then
+			node = node.right
+			insert(stack,node);insert(side,'right')
+		-- stop when the path is found
+		else return a,stack,side end
 	end
+	-- else return path to empty leaf for value
+	return nil,stack,side
 end
 
-b.delete = function(self,a)
-	if self then 
-		local v = self.value
-		if a == v then 
-			if not self.left or not self.right then
-				return self.left or self.right
-			else 
-				local sNode = self.right
-				while sNode.left do
-					sNode	    = sNode.left
-				end
-				self        = b.delete(self,sNode.value)
-				self.value  = sNode.value
-				return self
-			end
-		else
-			if a < v then
-				self.left   = b.delete(self.left,a)
-			else
-				self.right  = b.delete(self.right,a)
-			end
-		end
-		return updateSubtree(self)
-	end
-end
-
-b.pop = function(self,side)
-	local v
-	if not self[side] then
-		return self.value,self.left or self.right
-	else
-		v,self[side] = b.pop(self[side],side)
-	end
-	return v,updateSubtree(self)
-end
-
-b.peek = function(self,side)
-	if not self[side] then
-		return self.value
-	else
-		return b.peek(self[side],side)
-	end
-end
-
--- Find given element and return it
-b.get = function(self,a)
-	if self then
-		if a == self.value then
-			return a
-		elseif a < self.value then
-			return b.get(self.left,a)
-		else
-			return b.get(self.right,a)
-		end
+local unwindPath = function(i,stack,side)
+	local continue = true
+	while i > 0 and continue do
+		-- callback at each node when going back to root
+		continue,stack[i]   = updateSubtree(stack[i])
+		stack[i-1][side[i]] = stack[i]
+		i = i - 1
 	end
 end
 
@@ -150,7 +116,101 @@ traverse = function(node,a,b)
 		traverse(node[b],a,b)
 	end
 end
--- tree traversal is in order by default (left,root,right)
+
+-- http://stackoverflow.com/questions/1733311/pretty-print-a-tree
+local printTree
+printTree = function(self,depth)
+	depth = depth or 1
+	if self then 
+		printTree(self.right,depth+1)
+		print(string.format("%s%d",string.rep("	",depth),self.value))
+		printTree(self.left,depth+1)
+	end	
+end
+
+-- ================
+-- PUBLIC
+-- ================
+
+local b   = {}
+b.__index = b
+
+-- Insert given element, return it if successful
+b.add = function(self,a)
+	local exist,stack,side = getPath(a,self.root,'root')
+	-- exit if the value is already added
+	if exist then return end
+	stack[0] = self
+	-- create leaf node and insert value
+	local leaf        = newLeaf(a)
+	stack[#stack+1]   = leaf
+	-- link leaf node to ancestor
+	stack[#stack-1][side[#stack]] = leaf
+	-- unwind stack and update ancestor nodes
+	unwindPath(#stack-1,stack,side)
+	return a
+end
+
+b.delete = function(self,a)
+	local node = self.root
+	local exist,stack,side = getPath(a,node,'root')
+	-- exit if the value can't be found
+	if not exist then return end
+	stack[0]    = self
+	local node  = stack[#stack]
+	if not node.left or not node.right then
+		-- if node to be deleted has one or less child...
+		-- link child to parent
+		stack[#stack-1][side[#stack]] = node.left or node.right
+		unwindPath(#stack-1,stack,side)
+	else
+		-- else find successor node
+		local sNode = node.right
+		while sNode.left do
+			sNode	    = sNode.left
+		end
+		-- get path to successor node
+		local _,stack2,side2 = getPath(sNode.value,node.right,'right')
+		stack2[0] = node
+		-- delete successor node by linking it's parent to it's right child
+		stack2[#stack2-1][side2[#stack2]] = sNode.right
+		-- update path from node to sNode
+		unwindPath(#stack2-1,stack2,side2)
+		-- change deleted node value to successor's value
+		node.value  = sNode.value
+		-- update path from root to node
+		unwindPath(#stack,stack,side)
+	end
+end
+
+b.get = function(self,a)
+	local exist = getPath(a,self.root,'root')
+	return exist and a
+end
+
+b.pop = function(self,side)
+	local node    = self.root
+	local newNode = node
+	while newNode do
+		node    = newNode
+		newNode = node[side]
+	end
+	if node then
+		self:delete(node.value)
+		return node.value
+	end
+end
+
+b.peek = function(self,side)
+	local node    = self.root
+	local newNode = node
+	while newNode do
+		node    = newNode
+		newNode = newNode[side]
+	end
+	return node and node.value or nil
+end
+
 b.iterate = function(self,mode)
 	local a,b
 	if not mode then 
@@ -159,35 +219,17 @@ b.iterate = function(self,mode)
 		a,b = 'right','left' 
 	end
 	return coroutine.wrap(function()
-		traverse(self,a,b)
+		traverse(self.root,a,b)
 	end)
 end
 
--- http://stackoverflow.com/questions/1733311/pretty-print-a-tree
 b.printTree = function(self,depth)
-	depth = depth or 1
-	if self then 
-		b.printTree(self.right,depth+1)
-		print(string.format("%s%d",string.rep("  ",depth), self.value))
-		b.printTree(self.left,depth+1)
-	end	
+	printTree(self.root,depth)
 end
 
-return function()
-	local t = { -- proxy table for tree
-		root   = newLeaf(),
-		add    = function(self,a)
-			a,self.root = self.root:add(a)
-			return a
-		end,
-		delete = function(self,a)
-			self.root = self.root:delete(a) or newLeaf()
-		end,
-		pop    = function(self,side)
-			assert(side,'No side specified!')
-			a,self.root = self.root:pop(side)
-			return a
-		end,
-	}
-	return setmetatable(t,{__index = function(t,k) return t.root[k] end})
-end
+return setmetatable(b,{__call = 
+	function()
+		-- return setmetatable({root = newLeaf()},b)
+		return setmetatable({},b)
+	end
+})

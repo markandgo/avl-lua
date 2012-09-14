@@ -1,3 +1,4 @@
+-- newlist = require'avl'
 newlist = require'list'
 list	= newlist()
 
