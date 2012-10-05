@@ -39,7 +39,7 @@ _:printTree()
 
 ## list.lua ##
 
-list.lua augments the AVL tree by storing a counter for each value in a hash table. This allows duplicate values. Values can only be added if they were successfully added to the tree.
+list.lua augments the AVL tree by storing a counter for each value in a multiset. This allows for duplicate values. Values can only be added if they were successfully added to the tree.
 
 Functions:
 
