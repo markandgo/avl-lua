@@ -1,6 +1,6 @@
 AVL tree implementation in Lua. Useful for maintaining a sorted list.
 
-list.lua relies on avl.lua. list.lua allows duplicate values whereas avl.lua does not.
+list.lua is an add-on that uses a multiset for duplicate values.
 
 ## Init ##
 
@@ -12,7 +12,7 @@ list    = avl() -- newlist()
 
 ## avl.lua ##
 
-Values in the tree are added and sorted using > and < operations at each node. The operation will fail if either cases fail. You can add tables as values by defining a __lt metamethod for each one.
+Values in the tree are added and sorted using the > and < operations at each node. Values cannot be added more than once. You can add tables as values by defining a __lt metamethod for each one.
 
 Functions:
 
